@@ -19,6 +19,8 @@ using GoogleMapsCoreApi.Entities.Geocoding.Response;
 using GoogleMapsCoreApi.StaticMaps;
 using GoogleMapsCoreApi.StaticMaps.Entities;
 using Newtonsoft.Json;
+using Microsoft.Data.SqlClient;
+using System.Data;
 
 namespace CCCGBreeze.Controllers
 {
@@ -336,6 +338,55 @@ namespace CCCGBreeze.Controllers
 
             return finalList;
 
+        }
+
+        [HttpGet]
+        [Produces("application/json")]
+        [Route("testimonybank")]
+        public async Task<IActionResult> GetBank(string keyword)
+        {
+
+            string connectionString = "Data Source=cccgdb.database.windows.net,1433;Initial Catalog=cccgtestimonies;User ID=cccgadmin;Password=9249CCCG!!";
+
+            try
+            {
+                // Create a SqlConnection object
+                using (SqlConnection connection = new SqlConnection(connectionString))
+                {
+                    // Open the connection
+                    await connection.OpenAsync();
+
+                    // Create a SqlCommand object for the stored procedure
+                    using (SqlCommand command = new SqlCommand("GetRandomTestimonies", connection))
+                    {
+                        // Set command type to stored procedure
+                        command.CommandType = CommandType.StoredProcedure;
+
+                        // Add parameter for the keyword
+                        command.Parameters.AddWithValue("@Keyword", keyword);
+
+                        // Create a SqlDataReader to read the results
+                        using (SqlDataReader reader = await command.ExecuteReaderAsync())
+                        {
+                            // Create a DataTable to store the results
+                            DataTable dt = new DataTable();
+                            dt.Load(reader);
+
+                            // Convert DataTable to JSON string
+                            string json = JsonConvert.SerializeObject(dt, Formatting.Indented);
+
+                            // Return JSON string as IHttpActionResult
+                            return new JsonResult(json);
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                // Handle exceptions
+                return new JsonResult(new { error = ex.Message }) { StatusCode = 500 };
+
+            }
         }
 
         private static TimeSpan? GetDuration(DistanceMatrixResponse result)
